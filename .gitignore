@@ -1,0 +1,21 @@
+.DS_Store
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Never commit OAuth credentials, tokens, or downloaded company content.
+credentials*.json
+client_secret*.json
+token*.json
+data/private/
+downloads/
+transcripts/
+
+# Local-only design reasoning and interview preparation notes.
+private-notes/

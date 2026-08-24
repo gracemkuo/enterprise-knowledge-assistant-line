@@ -4,12 +4,12 @@
 
 這個 POC 只回答一個問題：
 
-> 員工是否能透過熟悉的 LINE 介面，有效查到公司 Google Drive 中的既有知識？
+> 使用者是否能透過熟悉的 LINE 介面，有效查到已核准文件中的既有知識？
 
 成功條件：
 
 1. 指定測試者能從 LINE 提問。
-2. Bot 只根據指定 Shared Drive／資料夾回答。
+2. Bot 只根據指定的私有 Cloud Storage 測試資料回答。
 3. 回答會附上可追溯的來源文件。
 4. 找不到足夠資料時不勉強作答。
 5. GitHub 公開版本不包含任何真實公司內容或識別資訊。
@@ -22,6 +22,7 @@
 - Pinecone、Qdrant、pgvector
 - 自訂 embeddings、chunking、reranking
 - 多部門細緻權限
+- Google Workspace Drive connector 的正式 tenant 驗證
 - 管理後台、報表與長期對話記憶
 
 ## 建議測試資料
@@ -38,8 +39,8 @@
 
 - 使用人數與部門範圍
 - LINE 與 Workspace 帳號綁定
+- Cloud Storage 文件更新要採手動、定時或事件驅動同步
 - 非同步工作佇列及重試
 - 錄音轉錄
 - Solution Library
 - 是否真的需要自建向量資料庫
-

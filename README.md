@@ -1,8 +1,8 @@
 # Enterprise Knowledge Assistant
 
 A minimal, permission-conscious proof of concept that lets an authorized user
-ask questions in LINE and receive source-grounded answers from company content
-stored in Google Workspace.
+ask questions in LINE and receive source-grounded answers from documents
+indexed by Google Agent Search.
 
 > This is an independent portfolio project and is not affiliated with or
 > endorsed by LY Corporation or Google.
@@ -14,7 +14,7 @@ Included:
 - LINE Official Account as the chat interface
 - LINE webhook signature verification
 - Explicit LINE user allowlist
-- Google Drive as the source of truth
+- A private Cloud Storage bucket for synthetic POC documents
 - Google Agent Search as the managed retrieval and answer layer
 - Answers with up to three source links
 - Synthetic documents for a safe public demo
@@ -35,14 +35,16 @@ Intentionally deferred:
 flowchart LR
     U[Authorized LINE user] --> L[LINE Official Account]
     L -->|signed webhook| B[FastAPI bot]
-    B -->|managed user credentials| S[Google Agent Search]
-    S <--> D[Google Workspace / Shared Drive]
+    B -->|Cloud Run service account| S[Google Agent Search]
+    S <--> D[Private Cloud Storage bucket]
     S -->|grounded answer + sources| B
     B -->|reply| L
 ```
 
-Google Drive remains the authoritative content store. This repository does not
-copy production documents into source control and does not implement its own
+The POC uses a private Cloud Storage bucket so it can be tested without a paid
+Google Workspace tenant. A customer deployment can replace this source with an
+approved Google Workspace connector or ingestion pipeline. This repository does
+not copy private documents into source control and does not implement its own
 vector database.
 
 ## Quick start
@@ -63,15 +65,14 @@ cp .env.example .env
 Fill in `.env` with a LINE Messaging API channel and your Google Agent Search
 app settings. Never commit `.env` or an OAuth credential file.
 
-### 2. Configure Google Drive search
+### 2. Configure Cloud Storage search
 
-Create a dedicated Google Shared Drive or folder for the POC, add only approved
-test documents, and connect it to an Agent Search app. See
+Create a private Cloud Storage bucket for the POC, upload only synthetic or
+approved test documents, import them into an unstructured Agent Search data
+store, and attach that data store to a search app. See
 [docs/google-agent-search-setup.md](docs/google-agent-search-setup.md).
 
-Google Workspace-backed Agent Search does **not** support search using ordinary
-service-account credentials. For local POC testing, authenticate with a managed
-Workspace user that can access the selected Drive content:
+For local POC testing, authenticate with Application Default Credentials:
 
 ```bash
 gcloud auth application-default login
@@ -103,9 +104,10 @@ as the LINE Messaging API webhook URL. Add your LINE user ID to
 
 ## Safe demo
 
-The files under [`demo-data/`](demo-data/) are fictional. Upload them to a
-separate demo Drive folder to record screenshots or a portfolio video without
-exposing a real company's documents.
+The files under [`demo-data/`](demo-data/) are fictional. Convert them to a
+supported upload format such as TXT or PDF and place them in a private demo
+bucket to record screenshots or a portfolio video without exposing a real
+company's documents.
 
 Suggested questions:
 
@@ -124,8 +126,9 @@ private environment. See [SECURITY.md](SECURITY.md) and
 ## Current POC limitations
 
 - It is designed for one or a few explicitly allowlisted testers.
-- Workspace Drive search must run with a managed user's identity. A production
-  rollout requires secure LINE-to-Workspace account linking.
+- One-time Cloud Storage imports must be refreshed when documents change.
+- A customer rollout using Workspace Drive requires secure LINE-to-Workspace
+  account linking and separate validation in the customer's tenant.
 - The webhook performs the search synchronously. A production system should
   add a queue, retry policy, and push-message completion flow.
 - The POC intentionally avoids custom retrieval logic so the knowledge-base

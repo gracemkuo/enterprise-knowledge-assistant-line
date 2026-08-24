@@ -27,8 +27,8 @@ class KnowledgeAnswer:
 class AgentSearchClient:
     """Thin client for Google Agent Search's managed answer API.
 
-    Google Workspace data stores require managed Workspace user credentials.
-    A regular service account is not supported for Drive-backed search.
+    The portfolio POC uses a Cloud Storage-backed data store. Customer
+    deployments can replace the source without changing this API boundary.
     """
 
     def __init__(

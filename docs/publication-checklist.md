@@ -11,7 +11,8 @@ Complete this checklist before the first public push.
 
 ## Sensitive-content review
 
-- [ ] No `.env`, OAuth JSON, tokens, API keys, or LINE credentials
+- [ ] No `.env`, OAuth JSON, tokens, API keys, LINE credentials, WhatsApp phone
+      numbers, or Meta credentials
 - [ ] No real Drive, file, folder, project, tenant, or Workspace IDs
 - [ ] No company documents, recordings, transcripts, prompts, or chat logs
 - [ ] No employee, customer, vendor, or project identifiers
@@ -34,4 +35,3 @@ Clone the repository into a clean temporary directory and follow the README as
 an external visitor would. Search the entire repository and Git history for
 known company names, domains, emails, Drive IDs, and credential patterns before
 changing repository visibility to public.
-

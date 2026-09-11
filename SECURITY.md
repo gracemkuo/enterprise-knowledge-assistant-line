@@ -9,10 +9,9 @@ potential impact.
 ## Data handling boundary
 
 This repository must never contain production company documents, chat logs,
-employee identifiers, Google Drive IDs, OAuth files, LINE credentials, or API
-tokens. The public repository contains only reusable code and synthetic demo
-content.
+employee identifiers, Google Drive IDs, OAuth files, LINE credentials, WhatsApp
+phone numbers, Meta App Secrets, access tokens, or API tokens. The public
+repository contains only reusable code and synthetic demo content.
 
 If a real secret is committed, revoke or rotate it immediately before removing
 it from Git history.
-

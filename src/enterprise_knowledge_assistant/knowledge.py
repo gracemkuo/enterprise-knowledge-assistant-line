@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from dataclasses import dataclass
+from time import monotonic
 from typing import Any
 
 import google.auth
@@ -10,6 +12,8 @@ from google.auth.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleAuthRequest
 
 from .config import Settings
+
+logger = logging.getLogger("uvicorn.error")
 
 
 @dataclass(frozen=True)
@@ -47,6 +51,9 @@ class AgentSearchClient:
         if not question:
             return KnowledgeAnswer("請輸入想查詢的問題。")
 
+        query_text = self._query_text(question)
+        channel = user_id.partition(":")[0] or "unknown"
+
         credentials = self._credentials
         if credentials is None:
             credentials, _ = google.auth.default(
@@ -57,6 +64,7 @@ class AgentSearchClient:
         if not credentials.valid:
             credentials.refresh(GoogleAuthRequest())
 
+        started = monotonic()
         response = self._http.post(
             self._answer_endpoint(),
             headers={
@@ -64,7 +72,7 @@ class AgentSearchClient:
                 "Content-Type": "application/json",
             },
             json={
-                "query": {"text": question},
+                "query": {"text": query_text},
                 "userPseudoId": self._pseudonymous_user_id(user_id),
                 "answerGenerationSpec": {
                     "includeCitations": True,
@@ -74,7 +82,28 @@ class AgentSearchClient:
             },
         )
         response.raise_for_status()
-        return self.parse_answer(response.json())
+        payload = response.json()
+        answer = self.parse_answer(payload)
+        raw_answer = payload.get("answer") or {}
+        skipped_reasons = raw_answer.get("answerSkippedReasons") or []
+        logger.info(
+            "Agent Search completed channel=%s duration_ms=%d question_chars=%d "
+            "context_applied=%s answer_chars=%d source_count=%d skipped_reasons=%s",
+            channel,
+            int((monotonic() - started) * 1000),
+            len(question),
+            bool(self.settings.agent_search_query_context.strip()),
+            len(answer.text),
+            len(answer.sources),
+            ",".join(str(reason) for reason in skipped_reasons) or "none",
+        )
+        return answer
+
+    def _query_text(self, question: str) -> str:
+        context = self.settings.agent_search_query_context.strip()
+        if not context:
+            return question
+        return f"{question}\n\n檢索背景：{context}"
 
     def _answer_endpoint(self) -> str:
         location = self.settings.agent_search_location

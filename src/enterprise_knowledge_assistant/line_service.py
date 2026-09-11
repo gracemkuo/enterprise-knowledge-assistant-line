@@ -12,6 +12,7 @@ from linebot.v3.webhooks import MessageEvent, TextMessageContent
 
 from .config import Settings
 from .knowledge import AgentSearchClient, KnowledgeAnswer
+from .message_format import format_knowledge_answer
 
 
 class LineKnowledgeService:
@@ -39,26 +40,16 @@ class LineKnowledgeService:
                 handled += 1
                 continue
 
-            answer = self.knowledge.ask(event.message.text, user_id)
+            answer = self.knowledge.ask(event.message.text, f"line:{user_id}")
             self._reply(event.reply_token, self.format_answer(answer))
             handled += 1
 
         return handled
 
     def format_answer(self, answer: KnowledgeAnswer) -> str:
-        text = answer.text.strip()
-        if answer.sources:
-            source_lines = ["", "來源："]
-            source_lines.extend(
-                f"{index}. {source.title}\n{source.uri}"
-                for index, source in enumerate(answer.sources, start=1)
-            )
-            text += "\n".join(source_lines)
-
-        limit = self.settings.max_line_message_chars
-        if len(text) > limit:
-            text = text[: limit - 12].rstrip() + "\n（內容已截短）"
-        return text
+        return format_knowledge_answer(
+            answer, self.settings.max_line_message_chars
+        )
 
     def _reply(self, reply_token: str, text: str) -> None:
         with ApiClient(self.configuration) as api_client:
@@ -68,4 +59,3 @@ class LineKnowledgeService:
                     messages=[TextMessage(text=text)],
                 )
             )
-

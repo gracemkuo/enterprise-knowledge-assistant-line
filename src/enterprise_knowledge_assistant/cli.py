@@ -6,7 +6,7 @@ from .knowledge import AgentSearchClient
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Test Agent Search before connecting LINE."
+        description="Test Agent Search before connecting a messaging channel."
     )
     parser.add_argument("question")
     args = parser.parse_args()
@@ -20,4 +20,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

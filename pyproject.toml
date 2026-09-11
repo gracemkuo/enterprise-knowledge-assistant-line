@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "enterprise-knowledge-assistant"
-version = "0.1.0"
-description = "A LINE-based knowledge assistant for Google Workspace"
+version = "0.2.0"
+description = "A LINE and WhatsApp knowledge assistant backed by Google Agent Search"
 requires-python = ">=3.10"
 dependencies = [
   "fastapi>=0.115,<1",

@@ -19,3 +19,6 @@ transcripts/
 
 # Local-only design reasoning and interview preparation notes.
 private-notes/
+
+# Local scripts may contain customer-specific information; keep off GitHub.
+/scripts/

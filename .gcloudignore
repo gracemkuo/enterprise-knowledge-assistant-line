@@ -1,0 +1,4 @@
+# Exclude local credentials, customer documents, and notes from source deployments.
+.gcloudignore
+.git
+#!include:.gitignore

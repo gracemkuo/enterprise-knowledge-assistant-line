@@ -4,11 +4,9 @@ import logging
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse
-from linebot.v3.exceptions import InvalidSignatureError
 
 from .config import Settings, get_settings
 from .knowledge import AgentSearchClient
-from .line_service import LineKnowledgeService
 from .legal_pages import data_deletion_html, privacy_policy_html
 from .whatsapp_service import (
     InvalidWhatsAppPayload,
@@ -42,12 +40,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/callback")
     @app.post("/webhooks/line")
     async def callback(request: Request) -> Response:
+        runtime_settings = settings or get_settings()
+        if not runtime_settings.line_enabled:
+            raise HTTPException(status_code=404, detail="LINE is disabled")
+        if not (
+            runtime_settings.line_channel_secret
+            and runtime_settings.line_channel_access_token
+        ):
+            raise HTTPException(status_code=503, detail="LINE is not configured")
+
+        from linebot.v3.exceptions import InvalidSignatureError
+
+        from .line_service import LineKnowledgeService
+
         signature = request.headers.get("X-Line-Signature")
         if not signature:
             raise HTTPException(status_code=400, detail="Missing LINE signature")
 
         body = (await request.body()).decode("utf-8")
-        runtime_settings = settings or get_settings()
         service = LineKnowledgeService(
             runtime_settings,
             AgentSearchClient(runtime_settings),

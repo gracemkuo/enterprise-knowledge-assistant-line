@@ -1,7 +1,32 @@
 # Enterprise Knowledge Assistant
 
+## Current direction (2026-10-06)
+
+WhatsApp is the active chat channel. LINE is disabled by default with
+`LINE_ENABLED=false`; LINE credentials can be empty. The legacy adapter is
+retained for older deployments. The existing cloud revision predates this local
+change; redeployment is needed to retire its LINE secret references. See
+[docs/architecture.md](docs/architecture.md) for the current design.
+
+For customer RAG evaluation, place approved sample files in
+`data/private/customer-documents/` for local reading and question preparation.
+This directory is ignored by Git and excluded from Cloud Build uploads. Local
+files do not automatically enter the knowledge base: upload the selected corpus
+to an approved private Cloud Storage bucket, import it into the intended Agent
+Search data store, and wait for indexing before testing. Keep the evaluation
+questions, expected answers, and results outside the indexed document corpus.
+
+Customer Phase 1 excludes audio and video: do not upload recordings into the search
+corpus or transcribe them. For manual ingestion, select document files only.
+A future automated upload/sync pipeline must enforce the same file-type filter;
+this repository does not yet implement that pipeline. Original audio may remain
+in the local customer folder.
+
+Keep customer evaluation documents separate from unrelated demonstration
+documents. Verify the app's actual indexed corpus before each benchmark.
+
 A minimal, permission-conscious proof of concept that lets an authorized user
-ask questions in LINE or WhatsApp and receive source-grounded answers from
+ask questions in WhatsApp and receive source-grounded answers from
 documents indexed by Google Agent Search.
 
 > This is an independent portfolio project and is not affiliated with or
@@ -11,10 +36,9 @@ documents indexed by Google Agent Search.
 
 Included:
 
-- LINE Official Account and Meta WhatsApp Cloud API as chat interfaces
-- LINE webhook signature verification
+- Meta WhatsApp Cloud API as the active chat interface
 - WhatsApp webhook challenge and `X-Hub-Signature-256` verification
-- Separate LINE and WhatsApp user allowlists
+- WhatsApp phone allowlist
 - A private Cloud Storage bucket for synthetic POC documents
 - Google Agent Search as the managed retrieval and answer layer
 - Answers with up to three source links
@@ -23,7 +47,7 @@ Included:
 
 Intentionally deferred:
 
-- LINE or WhatsApp file ingestion and automated index refresh
+- Chat file ingestion and automated index refresh
 - Solution Library generation
 - Audio and video transcription
 - Custom embeddings or vector databases
@@ -35,14 +59,12 @@ Intentionally deferred:
 
 ```mermaid
 flowchart LR
-    U[Authorized users] --> L[LINE Official Account]
-    U --> W[WhatsApp Cloud API]
-    L -->|signed webhook| B[FastAPI bot]
-    W -->|signed webhook| B
+    U[Authorized users] --> W[WhatsApp Cloud API]
+    W -->|signed webhook| B[FastAPI bot]
     B -->|Cloud Run service account| S[Google Agent Search]
-    S <--> D[Private Cloud Storage bucket]
-    S -->|grounded answer + sources| B
-    B -->|reply| L
+    D[Private Cloud Storage source] -->|import and index| I[Document index]
+    S <--> I
+    S -->|grounded answer and sources| B
     B -->|reply| W
 ```
 
@@ -54,22 +76,15 @@ vector database.
 
 ## Customer Phase 1 target (not yet implemented)
 
-The selected Phase 1 direction extends the text-only POC with two controlled
-document entry paths:
+Approved shared files will pass through type, duplicate, version and readability
+checks, conversion when needed, storage of search copies, and Agent Search import.
+Audio and video are skipped. Conflicts and drafts remain pending review.
 
-- authorized uploaders can send supported documents to the LINE Official Account;
-- an approved Google Drive or Shared Drive folder is synchronized by a dedicated
-  integration identity with access limited to that scope.
-
-Drive is the canonical document location. A LINE upload is validated and
-deduplicated in private Cloud Storage quarantine, then published to a dedicated
-Drive inbox before the normal Drive-to-Agent-Search pipeline indexes it. This
-prevents the LINE and Drive paths from creating two search documents for the same
-file. LINE users are not granted Cloud Storage console or bucket access. Query
-and upload allowlists are separate, and audio transcription remains a later-phase
-feature. See [docs/architecture.md](docs/architecture.md) for the target flow and
-security trade-offs. Full per-user Drive ACL synchronization is a separate,
-enterprise-level scope and is not part of the basic Phase 1 proposal.
+Reusable logic is proposed under a new src ingestion package, with a separate
+entry point for background execution. A Cloud Run Job is a candidate for batch
+processing; packaging modules in a Docker image does not schedule them. The
+worker, trigger, source identity and update/deletion behavior have not been
+implemented or finalized. See [docs/architecture.md](docs/architecture.md).
 
 ## Quick start
 
@@ -86,14 +101,37 @@ pip install -e .
 cp .env.example .env
 ```
 
-Fill in `.env` with your LINE Messaging API channel and Google Agent Search app
-settings. Add the WhatsApp values when that channel is enabled. Never commit
+Fill in `.env` with your WhatsApp Cloud API and Google Agent Search app
+settings. Leave `LINE_ENABLED=false` for this scope. Never commit
 `.env` or an OAuth credential file.
 
-For short or first-person POC questions, `AGENT_SEARCH_QUERY_CONTEXT` can add a
-non-secret retrieval hint. For example, a single-user resume demo can explain
-that first-person references mean the person described by the resume. The hint
-is appended only to the Agent Search query and is not shown in chat replies.
+Leave `AGENT_SEARCH_QUERY_CONTEXT` empty for the current customer benchmark.
+Questions are sent without added identity assumptions. This optional setting
+can add a non-secret retrieval hint in a future experiment; any change must be
+recorded as a new benchmark version.
+
+V2 adds general answer rules through `answerGenerationSpec.promptSpec.preamble`:
+preserve conditions, draft status and uncertainty; answer each requested part;
+avoid unsupported additions. `AGENT_SEARCH_ANSWER_PREAMBLE` can override these
+rules (an empty value disables them). Actual cited filenames are shown below
+the answer, using citation references rather than all retrieved documents.
+Benchmark changes apply locally; deploying the chat service is a separate step.
+The current rules also require concise bullet points starting with the answer,
+without introductory source phrases or closing summaries. Necessary dates,
+versions, draft status and scope remain in the answer. V2 retains its original
+rules and results; V3 tests the newer concise rules together with passage retrieval.
+
+V3 tests explicit passage retrieval with `AGENT_SEARCH_PASSAGE_RETRIEVAL=true`.
+The client searches the original question and its subquestions, requests up to
+10 verbatim segments with two neighboring segments on either side, deduplicates
+them, and searches continued section headings for multi-page lists. It passes
+the resulting source text to Answer API through `searchSpec.searchResultList`.
+The runtime never reads evaluation questions, expected answers or local customer
+documents. The feature defaults to off; V3 enables it only for the benchmark.
+Digital Parser and the existing cloud index remain in use. V3 scored 21/30
+correct (70.0%), below V2 at 23/30 (76.7%); the experiment remains disabled
+and has not been deployed. The next proposed comparison uses a separate data
+store with Layout Parser and chunking, keeping the same corpus and questions.
 
 ### 2. Configure Cloud Storage search
 
@@ -123,16 +161,8 @@ from the expected documents.
 uvicorn enterprise_knowledge_assistant.app:app --reload --port 8080
 ```
 
-Expose port `8080` through an HTTPS endpoint. Keep the existing LINE callback,
-or use its clearer alias:
-
-```text
-https://YOUR-HOST/callback
-https://YOUR-HOST/webhooks/line
-```
-
-as the LINE Messaging API webhook URL. Add your LINE user ID to
-`LINE_ALLOWED_USER_IDS` before testing.
+Expose port `8080` through an HTTPS endpoint, then configure the WhatsApp
+webhook below. The legacy LINE callback is disabled in the local default config.
 
 ### 5. Configure WhatsApp Cloud API
 
@@ -191,14 +221,14 @@ private environment. See [SECURITY.md](SECURITY.md) and
 
 - It is designed for one or a few explicitly allowlisted testers.
 - One-time Cloud Storage imports must be refreshed when documents change.
-- The current code answers text messages from LINE and WhatsApp. Non-text LINE
-  messages are ignored; WhatsApp users receive a text-only notice. File
+- The active channel answers WhatsApp text messages. Non-text WhatsApp users
+  receive a text-only notice. File
   ingestion is a documented target, not a completed POC capability.
 - Direct Workspace federation or per-user Drive ACL enforcement requires secure
-  LINE-to-Workspace account linking and separate validation in the customer's
+  user-to-Workspace account linking and separate validation in the customer's
   tenant; the Phase 1 dedicated-folder ingestion model does not claim that level
   of authorization.
-- Both messaging webhooks perform the search synchronously. A production system
+- The messaging webhook performs the search synchronously. A production system
   should add a queue, retry policy, durable webhook deduplication, and a
   channel-specific completion message flow.
 - The POC intentionally avoids custom retrieval logic so the knowledge-base

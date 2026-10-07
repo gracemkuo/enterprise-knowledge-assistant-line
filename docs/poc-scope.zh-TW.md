@@ -1,73 +1,41 @@
 # POC 範圍
 
-## 這一版要驗證什麼
+更新日期：2026-10-06。以WhatsApp為使用介面；本機停用LINE的修改尚未部署。
+實際雲端資源清單保存在私人筆記。
 
-這個 POC 只回答一個問題：
+## 目前驗證目標
 
-> 使用者是否能透過熟悉的 LINE 或 WhatsApp 介面，有效查到已核准文件中的既有知識？
+1. 核准測試者能透過WhatsApp提問。
+2. 回答依據指定且完成索引的文件，並附可核對來源。
+3. 找不到資料或文件尚未定案時，不編造或做無依據承諾。
+4. 以固定語料、調校題與保留驗收題評估客戶RAG品質。
+5. 原始文件、密鑰、私人設定及實測內容不提交公開儲存庫。
 
-成功條件：
+40題已準備；V1已測30題，10題保留驗收未測。現有索引已核對為八份客戶文件。
+目前本機與雲端檢索背景已清空；V1保留原始設定與結果，後續測試另開版本。
 
-1. 指定測試者能從 LINE 或 WhatsApp 提問。
-2. Bot 只根據指定的私有 Cloud Storage 測試資料回答。
-3. 回答會附上可追溯的來源文件。
-4. 找不到足夠資料時不勉強作答。
-5. GitHub 公開版本不包含任何真實公司內容或識別資訊。
+## 文件處理方向：尚未實作
 
-## 這一版不做
+```text
+核准分享範圍 → 取得文件 → 檢查格式／重複／版本／可讀性
+→ 必要轉換 → 私有Cloud Storage搜尋副本
+→ Agent Search import → 核對解析與索引結果
+```
 
-- 從 LINE 或 WhatsApp 上傳文件與自動更新索引
-- Solution Library
-- 定期整理與主題歸納
-- 錄音或影片轉錄
-- Pinecone、Qdrant、pgvector
-- 自訂 embeddings、chunking、reranking
-- 多部門細緻權限
-- Google Workspace Drive connector 的正式 tenant 驗證
-- 管理後台、報表與長期對話記憶
+完全重複副本只匯入一份；同名異內容、草稿及解析異常留下確認狀態。
+錄音與影片第一階段跳過。題庫、標準答案、結果與抽取中間檔不索引。
 
-## 建議測試資料
+主要邏輯建議放src下的ingestion套件，CLI或script作啟動入口。
+背景執行先評估Cloud Run Job，目前尚未建立。來源身分、觸發方式及
+版本更新／刪除規則須在實作前確認。詳見 [目前架構](architecture.md)。
 
-先選 20～50 份品質較好的文件，涵蓋三種問題：
+## 尚未完成的能力
 
-- 明確事實：流程、日期、負責人、決策。
-- 跨文件整理：過去針對某情境討論過哪些方案。
-- 應該拒答：資料中不存在或使用者無權查看的問題。
+- 分享資料夾自動同步、聊天檔案上傳及匯入狀態追蹤。
+- 耐久去重、佇列、重試及非同步通知。
+- 每位使用者不同文件的權限。
+- 影音轉錄、Solution Library、管理後台及長期對話記憶。
+- 自建向量資料庫與embedding流程。
 
-每個問題記錄：預期答案、應引用文件、實際答案、是否可接受。
-
-## POC 通過後才重新評估
-
-- 使用人數與部門範圍
-- LINE 與 Workspace 帳號綁定
-- WhatsApp Business 正式帳號、電話號碼與 Meta App 審核
-- Cloud Storage 文件更新要採手動、定時或事件驅動同步
-- 非同步工作佇列及重試
-- 錄音轉錄
-- Solution Library
-- 是否真的需要自建向量資料庫
-
-## 已確認的客戶 Phase 1 延伸方向
-
-POC 通過後，客戶 Phase 1 必須加入「授權使用者從 LINE 上傳文件」：
-
-1. LINE webhook 先驗證簽章、上傳 allowlist 與事件是否重複。
-2. 背景工作下載檔案並保存至客戶控制的私有 Cloud Storage。
-3. 檢查支援格式、容量與處理狀態後更新 Agent Search 索引。
-4. 完成或失敗時由 LINE 通知上傳者。
-
-Phase 1 同時採用「核准 Drive 資料夾背景同步」：客戶在建置時一次將
-指定 Shared Drive／資料夾以 Viewer 權限分享給同步身分，Cloud Run Job
-定時把文件下載或匯出至私有 Cloud Storage，再匯入既有 Agent Search
-data store。LINE 查詢沿用目前已驗證的 service account，不使用 Agent
-Search Google Drive Connector，也不要求使用者每次查詢重新授權 Google。
-
-Drive 是正式文件管理位置。LINE 新檔先進 GCS quarantine 做格式與內容
-去重，通過後發布至 Drive `00-LINE-Inbox`，再由上述統一同步流程索引；
-不直接從 LINE raw object 建立第二份搜尋文件。同名異內容或疑似重複的
-檔案進 `01-Needs-Review`，確認前不納入搜尋。
-
-LINE 與 WhatsApp 查詢各自使用獨立 allowlist，並共用同一個 Agent Search
-查詢服務；目前 WhatsApp 只支援文字問答。查詢 allowlist 與上傳 allowlist
-仍分開管理。錄音／影片轉錄仍屬下一階段，不納入 Phase 1。這一節是後續
-範圍說明，不代表目前 POC 已完成文件上傳能力。
+允許名單模式假設核准使用者共同閱讀同一批文件，不等同Drive每人權限同步。
+新增資源與功能依已確認需求及測試證據決定。

@@ -36,9 +36,9 @@ def test_format_answer_adds_sources() -> None:
     text = service.format_answer(answer)
 
     assert "A grounded answer." in text
-    assert "來源：" in text
+    assert "引用文件：" in text
     assert "Decision record" in text
-    assert "https://drive.google.com/example" in text
+    assert "https://drive.google.com/example" not in text
 
 
 def test_format_answer_respects_line_limit() -> None:
@@ -50,4 +50,3 @@ def test_format_answer_respects_line_limit() -> None:
 
     assert len(text) <= 500
     assert text.endswith("（內容已截短）")
-

@@ -94,6 +94,8 @@ class AgentSearchClient:
             request_payload["searchSpec"] = {"searchParams": {
                 "maxReturnResults": self.settings.agent_search_max_return_results
             }}
+        if self.settings.agent_search_disable_query_rephraser:
+            request_payload["queryUnderstandingSpec"] = {"queryRephraserSpec": {"disable": True}}
         self.last_retrieval_trace = []
         if self.settings.agent_search_passage_retrieval:
             def search(query: str) -> dict[str, Any]:

@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # disable it together with this setting.
     agent_search_max_return_results: int | None = Field(default=None, ge=1, le=25)
     agent_search_ignore_low_relevant_content: bool = True
+    # The built-in rephraser searches only its rewrites, never the original
+    # question, and can change the meaning of colloquial questions.
+    agent_search_disable_query_rephraser: bool = False
     agent_search_answer_preamble: str = (
         "請僅依提供的文件回答問題，使用繁體中文，簡潔且完整。"
         "直接從重點開始，以簡短條列式回答；每點只說明具體答案或必要條件。"

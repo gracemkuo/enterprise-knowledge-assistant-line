@@ -181,3 +181,24 @@ def test_converted_documents_are_cited_by_their_original_name():
     answer = AgentSearchClient.parse_answer(payload)
     assert [source.title for source in answer.sources] == ["指南.pdf", "page.html"]
 
+
+def test_search_tuning_settings_are_sent_only_when_enabled() -> None:
+    requests: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={"answer": {"answerText": "摘要"}})
+
+    for overrides in ({}, {"agent_search_max_return_results": 10,
+                           "agent_search_ignore_low_relevant_content": False,
+                           "agent_search_disable_query_rephraser": True}):
+        AgentSearchClient(
+            make_settings(**overrides),
+            credentials=StaticCredentials(),
+            http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+        ).ask("我想指定玉山銀行，可以嗎？", "whatsapp:masked-user")
+
+    assert "searchSpec" not in requests[0] and "queryUnderstandingSpec" not in requests[0]
+    assert requests[1]["searchSpec"] == {"searchParams": {"maxReturnResults": 10}}
+    assert requests[1]["queryUnderstandingSpec"] == {"queryRephraserSpec": {"disable": True}}
+    assert requests[1]["answerGenerationSpec"]["ignoreLowRelevantContent"] is False  # type: ignore[index]

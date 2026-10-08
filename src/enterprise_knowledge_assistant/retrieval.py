@@ -31,6 +31,7 @@ def initial_queries(question: str) -> list[str]:
 
 def retrieve_passages(question: str, search: Callable[[str], dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     documents: dict[str, dict[str, Any]] = {}
+    neighbors: dict[str, list[dict[str, str]]] = {}
     trace: list[dict[str, Any]] = []
 
     def collect(query: str, scoped_document: str = '') -> None:
@@ -50,13 +51,26 @@ def retrieve_passages(question: str, search: Callable[[str], dict[str, Any]]) ->
                 'title': metadata.get('title') or unquote(metadata.get('link', '')).rsplit('/', 1)[-1],
                 'documentContexts': [],
             })
-            seen = {(c['pageIdentifier'], c['content']) for c in current['documentContexts']}
-            for segment in segments:
-                content = segment.get('content', '').strip()
-                page = str(segment.get('pageNumber', ''))
-                if content and (page, content) not in seen:
-                    current['documentContexts'].append({'pageIdentifier': page, 'content': content})
-                    seen.add((page, content))
+            # The Search API returns neighbors separately from `content`.
+            # Keep all direct hits before neighbors so surrounding text cannot
+            # displace the relevant segments under the context limit.
+            neighboring_segments = [
+                neighbor
+                for segment in segments
+                for field in ('previous_segments', 'next_segments')
+                for neighbor in segment.get(field, [])
+            ]
+            for target, entries in (
+                (current['documentContexts'], segments),
+                (neighbors.setdefault(name, []), neighboring_segments),
+            ):
+                seen = {(c['pageIdentifier'], c['content']) for c in target}
+                for segment in entries:
+                    content = segment.get('content', '').strip()
+                    page = str(segment.get('pageNumber', ''))
+                    if content and (page, content) not in seen:
+                        target.append({'pageIdentifier': page, 'content': content})
+                        seen.add((page, content))
 
     for query in initial_queries(question):
         collect(query)
@@ -67,7 +81,7 @@ def retrieve_passages(question: str, search: Callable[[str], dict[str, Any]]) ->
         expanded = 0
         for name, doc in list(documents.items()):
             headings = []
-            for context in doc['documentContexts']:
+            for context in [*doc['documentContexts'], *neighbors.get(name, [])]:
                 for line in normalize(context['content']).splitlines():
                     match = re.fullmatch(r'\s*(.{4,35}?)\s*[（(]續[）)]\s*', line)
                     if match:
@@ -86,11 +100,18 @@ def retrieve_passages(question: str, search: Callable[[str], dict[str, Any]]) ->
     total_chars = 0
     for doc in documents.values():
         contexts = []
-        for context in doc['documentContexts'][:18]:
+        seen = set()
+        for context in [*doc['documentContexts'], *neighbors.get(doc['document'], [])]:
+            identity = (context['pageIdentifier'], context['content'])
+            if identity in seen:
+                continue
             if total_chars + len(context['content']) > 110_000:
                 break
             contexts.append(context)
+            seen.add(identity)
             total_chars += len(context['content'])
+            if len(contexts) >= 18:
+                break
         if contexts:
             results.append({'unstructuredDocumentInfo': {**doc, 'documentContexts': contexts}})
         if len(results) >= 8:

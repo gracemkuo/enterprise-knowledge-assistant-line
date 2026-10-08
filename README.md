@@ -130,8 +130,16 @@ The runtime never reads evaluation questions, expected answers or local customer
 documents. The feature defaults to off; V3 enables it only for the benchmark.
 Digital Parser and the existing cloud index remain in use. V3 scored 21/30
 correct (70.0%), below V2 at 23/30 (76.7%); the experiment remains disabled
-and has not been deployed. The next proposed comparison uses a separate data
-store with Layout Parser and chunking, keeping the same corpus and questions.
+and has not been deployed. V4 completed that comparison on a separate app with
+Layout Parser and 500-token chunking, using the same eight source files and
+30 questions with V2's answer rules and managed retrieval. It scored 20/30
+correct (66.7%), with eight partial answers and two incorrect answers. Two
+questions improved and four regressed relative to V2; a PDF table's salary
+deduction values were reversed in Google's parsed text. The new app also uses
+a different company-name setting, so this is not a parser-only ablation.
+The local `.env` now targets the V4 app for testing; Cloud Run was not redeployed.
+The ten holdout questions remain untested, and prior benchmark captures remain
+unchanged. V4 captures and the four-version workbook are stored privately.
 
 ### 2. Configure Cloud Storage search
 

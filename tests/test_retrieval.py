@@ -25,3 +25,50 @@ def test_continued_section_query_recovers_missing_page_and_deduplicates():
     assert {c['pageIdentifier'] for c in info['documentContexts']} == {'5', '7'}
     assert len(info['documentContexts']) == 2
     assert info['uri'] == 'gs://bucket/report.pdf'
+
+
+def test_neighboring_segments_keep_their_own_pages_and_source():
+    def search(query):
+        return {'results': [{'document': {
+            'name': 'projects/test/documents/report',
+            'derivedStructData': {
+                'title': '跨頁報告', 'link': 'gs://bucket/report.pdf',
+                'extractive_segments': [{
+                    'pageNumber': '5', 'content': '第二階段',
+                    'previous_segments': [{'pageNumber': '4', 'content': '第一階段'}],
+                    'next_segments': [
+                        {'pageNumber': '6', 'content': '第三階段'},
+                        {'pageNumber': '6', 'content': '第三階段'},
+                    ],
+                }],
+            },
+        }}]}
+
+    results, _ = retrieve_passages('請說明流程', search)
+    info = results[0]['unstructuredDocumentInfo']
+    assert info['documentContexts'] == [
+        {'pageIdentifier': '5', 'content': '第二階段'},
+        {'pageIdentifier': '4', 'content': '第一階段'},
+        {'pageIdentifier': '6', 'content': '第三階段'},
+    ]
+    assert info['uri'] == 'gs://bucket/report.pdf'
+
+
+def test_neighbors_cannot_displace_direct_hits_at_context_limit():
+    def search(query):
+        return {'results': [{'document': {
+            'name': 'projects/test/documents/report',
+            'derivedStructData': {
+                'link': 'gs://bucket/report.pdf',
+                'extractive_segments': [
+                    {'pageNumber': str(i), 'content': f'直接命中{i}',
+                     'next_segments': [{'pageNumber': '99', 'content': f'相鄰{i}'}]}
+                    for i in range(18)
+                ],
+            },
+        }}]}
+
+    results, _ = retrieve_passages('請說明內容', search)
+    contexts = results[0]['unstructuredDocumentInfo']['documentContexts']
+    assert len(contexts) == 18
+    assert all(context['content'].startswith('直接命中') for context in contexts)

@@ -70,7 +70,7 @@ class AgentSearchClient:
         started = monotonic()
         generation_spec: dict[str, Any] = {
             "includeCitations": True,
-            "ignoreLowRelevantContent": True,
+            "ignoreLowRelevantContent": self.settings.agent_search_ignore_low_relevant_content,
             "answerLanguageCode": self.settings.answer_language_code,
         }
         if self.settings.agent_search_answer_preamble.strip():
@@ -82,6 +82,10 @@ class AgentSearchClient:
             "userPseudoId": self._pseudonymous_user_id(user_id),
             "answerGenerationSpec": generation_spec,
         }
+        if self.settings.agent_search_max_return_results:
+            request_payload["searchSpec"] = {"searchParams": {
+                "maxReturnResults": self.settings.agent_search_max_return_results
+            }}
         self.last_retrieval_trace = []
         if self.settings.agent_search_passage_retrieval:
             def search(query: str) -> dict[str, Any]:

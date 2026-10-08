@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     agent_search_engine_id: str = Field(min_length=1)
     agent_search_query_context: str = ""
     agent_search_passage_retrieval: bool = False
+    # Explicit search params make the Answer API ground on full chunks rather
+    # than short extracts; values above 10 are accepted (max 25) but still
+    # yield 10 references. The low-relevance filter rejects those chunks, so
+    # disable it together with this setting.
+    agent_search_max_return_results: int | None = Field(default=None, ge=1, le=25)
+    agent_search_ignore_low_relevant_content: bool = True
     agent_search_answer_preamble: str = (
         "請僅依提供的文件回答問題，使用繁體中文，簡潔且完整。"
         "直接從重點開始，以簡短條列式回答；每點只說明具體答案或必要條件。"

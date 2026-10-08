@@ -171,3 +171,13 @@ def test_passage_mode_sends_original_segments_with_source_identity() -> None:
     assert info['documentContexts'] == [{'content': '客戶文件的原文', 'pageIdentifier': '5'}]
     assert info['uri'] == 'gs://bucket/customer.pdf'
     assert requests[-1][1]['query']['text'] == '請解釋客戶文件'
+
+
+def test_converted_documents_are_cited_by_their_original_name():
+    payload = {"answer": {"answerText": "答案", "citations": [{"sources": [{"referenceId": "0"}, {"referenceId": "1"}]}],
+                          "references": [
+                              {"chunkInfo": {"documentMetadata": {"uri": "gs://bucket/指南.pdf.html"}}},
+                              {"chunkInfo": {"documentMetadata": {"uri": "gs://bucket/page.html"}}}]}}
+    answer = AgentSearchClient.parse_answer(payload)
+    assert [source.title for source in answer.sources] == ["指南.pdf", "page.html"]
+

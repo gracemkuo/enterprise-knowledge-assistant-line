@@ -27,7 +27,7 @@ def format_knowledge_answer(answer: KnowledgeAnswer, max_chars: int) -> str:
     text = _without_intro_and_duplicate_sources(answer)
     footer = ""
     if answer.sources:
-        source_lines = ["", "引用文件："]
+        source_lines = ["", f"參考文件（共 {len(answer.sources)} 份）："]
         source_lines.extend(
             f"{index}. {source.title}"
             for index, source in enumerate(answer.sources, start=1)

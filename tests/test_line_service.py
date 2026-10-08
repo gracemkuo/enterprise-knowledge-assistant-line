@@ -36,7 +36,7 @@ def test_format_answer_adds_sources() -> None:
     text = service.format_answer(answer)
 
     assert "A grounded answer." in text
-    assert "引用文件：" in text
+    assert "參考文件（共" in text
     assert "Decision record" in text
     assert "https://drive.google.com/example" not in text
 

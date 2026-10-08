@@ -17,6 +17,14 @@ from .retrieval import retrieve_passages
 
 logger = logging.getLogger("uvicorn.error")
 
+# The ingestion job publishes converted files as "<original name>.html".
+_CONVERTED_FROM = (".pdf", ".xlsx", ".docx", ".pptx")
+
+
+def _original_filename(filename: str) -> str:
+    stem = filename[:-5] if filename.lower().endswith(".html") else ""
+    return stem if stem.lower().endswith(_CONVERTED_FROM) else filename
+
 
 @dataclass(frozen=True)
 class Source:
@@ -179,7 +187,7 @@ class AgentSearchClient:
             uri = str(metadata.get("uri") or "").strip()
             if not uri:
                 continue
-            filename = unquote(urlsplit(uri).path.rsplit("/", 1)[-1])
+            filename = _original_filename(unquote(urlsplit(uri).path.rsplit("/", 1)[-1]))
             title = filename or str(metadata.get("title") or "來源文件").strip()
             key = (title, uri)
             if key not in seen:

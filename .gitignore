@@ -8,7 +8,7 @@ __pycache__/
 .coverage
 htmlcov/
 *.log
-
+/cloud-run-whatsapp
 # Never commit OAuth credentials, tokens, or downloaded company content.
 credentials*.json
 client_secret*.json

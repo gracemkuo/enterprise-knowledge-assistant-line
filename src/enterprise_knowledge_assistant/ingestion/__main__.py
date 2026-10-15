@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .pipeline import run
+from .pipeline import DEFAULT_REPLACEMENTS, run
 
 
 def main() -> None:
@@ -18,11 +18,12 @@ def main() -> None:
     parser.add_argument("--exclude-rows-marked", action="append", default=[], metavar="TEXT",
                         help="Leave out workbook rows where a cell equals this text; repeatable")
     parser.add_argument("--replace", action="append", default=[], metavar="OLD=NEW",
-                        help="Rewrite a term in published documents and file names, e.g. 海沃=恆璞; repeatable")
+                        help="Also rewrite this term in published documents and file names "
+                             "(海沃=恆璞 is always applied); repeatable")
     parser.add_argument("--prune", action="store_true",
                         help="Delete output files that no source file produces any more")
     args = parser.parse_args()
-    replacements = []
+    replacements = list(DEFAULT_REPLACEMENTS)
     for pair in args.replace:
         old, sep, new = pair.partition("=")
         if not sep or not old:

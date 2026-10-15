@@ -28,6 +28,8 @@ PASSTHROUGH = {".docx", ".pptx", ".html", ".htm", ".txt"}
 NEEDS_CONVERSION = {".doc", ".ppt", ".xls"}
 IGNORED_NAMES = {".DS_Store", "README.md", "Thumbs.db"}
 DOCUMENTS = "documents"
+# Always rewritten in published documents and file names; 海沃 is a competitor.
+DEFAULT_REPLACEMENTS = (("海沃", "恆璞"),)
 OFFICE_XML = {".docx", ".pptx"}
 TEXT_PASSTHROUGH = {".html", ".htm", ".txt"}
 
@@ -68,7 +70,7 @@ def run(
     exclude_columns: Sequence[str] = (),
     exclude_row_markers: Sequence[str] = (),
     prune: bool = False,
-    replacements: Sequence[tuple[str, str]] = (),
+    replacements: Sequence[tuple[str, str]] = DEFAULT_REPLACEMENTS,
 ) -> dict[str, Any]:
     """Process `source` into `output` and return the manifest.
 

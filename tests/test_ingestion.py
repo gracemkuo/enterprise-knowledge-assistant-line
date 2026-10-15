@@ -123,7 +123,7 @@ def test_replacements_rewrite_published_documents_and_names(tmp_path):
     with zipfile.ZipFile(source / "clean.pptx", "w") as pptx:
         pptx.writestr("ppt/slides/slide1.xml", "<a:t>海沃</a:t>")
 
-    manifest = run(source, output, replacements=[("海沃", "恆璞")])
+    manifest = run(source, output)
     status = {record["path"]: record["status"] for record in manifest["records"]}
     assert status == {"海沃QA.xlsx": "converted", "notes.txt": "passthrough",
                       "intro.docx": "needs_review", "clean.pptx": "passthrough"}
@@ -134,4 +134,5 @@ def test_replacements_rewrite_published_documents_and_names(tmp_path):
     with zipfile.ZipFile(documents / "clean.pptx") as pptx:
         assert pptx.read("ppt/slides/slide1.xml").decode() == "<a:t>恆璞</a:t>"
     assert (source / "notes.txt").read_text() == "海沃簡介"
-    assert not run(source, output)["records"][0].get("reused")
+    assert run(source, output)["records"][0].get("reused")
+    assert not run(source, output, replacements=())["records"][0].get("reused")

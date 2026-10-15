@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import re
 import unicodedata
+from typing import Sequence
 
 # CJK Radicals Supplement glyphs that PDF fonts emit in place of the ordinary
 # character and that NFKC leaves untouched.
@@ -30,3 +32,15 @@ def clean_text(text: str) -> str:
             continue
         out.append(char)
     return "".join(out)
+
+
+def term_pattern(term: str) -> re.Pattern[str]:
+    """Match `term` even when PDF extraction put spaces or line breaks inside it."""
+
+    return re.compile(r"\s*".join(re.escape(char) for char in term))
+
+
+def replace_terms(text: str, replacements: Sequence[tuple[str, str]]) -> str:
+    for old, new in replacements:
+        text = term_pattern(old).sub(new, text)
+    return text

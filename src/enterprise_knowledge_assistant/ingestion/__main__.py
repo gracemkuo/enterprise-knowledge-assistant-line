@@ -17,14 +17,22 @@ def main() -> None:
                         help="Workbook column that must not be published; repeatable")
     parser.add_argument("--exclude-rows-marked", action="append", default=[], metavar="TEXT",
                         help="Leave out workbook rows where a cell equals this text; repeatable")
+    parser.add_argument("--replace", action="append", default=[], metavar="OLD=NEW",
+                        help="Rewrite a term in published documents and file names, e.g. 海沃=恆璞; repeatable")
     parser.add_argument("--prune", action="store_true",
                         help="Delete output files that no source file produces any more")
     args = parser.parse_args()
+    replacements = []
+    for pair in args.replace:
+        old, sep, new = pair.partition("=")
+        if not sep or not old:
+            parser.error(f"--replace expects OLD=NEW, got {pair!r}")
+        replacements.append((old, new))
     include = None
     if args.corpus:
         include = [doc["path"] for doc in json.loads(args.corpus.read_text())["documents"]]
     manifest = run(args.source, args.output, include=include, exclude_columns=args.exclude_column,
-                   exclude_row_markers=args.exclude_rows_marked, prune=args.prune)
+                   exclude_row_markers=args.exclude_rows_marked, prune=args.prune, replacements=replacements)
     print(json.dumps(manifest["summary"], ensure_ascii=False))
     for record in manifest["records"]:
         if record["status"] not in ("converted", "passthrough"):

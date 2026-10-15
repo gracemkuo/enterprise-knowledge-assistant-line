@@ -106,3 +106,32 @@ def test_prune_removes_outputs_without_a_source(tmp_path):
     assert run(source, output)["stale_outputs"] == ["a.txt"]
     assert run(source, output, prune=True)["stale_outputs"] == []
     assert list((output / "documents").iterdir()) == []
+
+
+def test_replacements_rewrite_published_documents_and_names(tmp_path):
+    import zipfile
+
+    source, output = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    workbook = openpyxl.Workbook()
+    workbook.active.append(["No", "題目", "回覆"])
+    workbook.active.append([1, "海沃的服務？", "請洽海 沃窗口"])
+    workbook.save(source / "海沃QA.xlsx")
+    (source / "notes.txt").write_text("海沃簡介")
+    with zipfile.ZipFile(source / "intro.docx", "w") as docx:
+        docx.writestr("word/document.xml", "<w:t>海沃</w:t><w:t>海</w:t><w:t>沃</w:t>")
+    with zipfile.ZipFile(source / "clean.pptx", "w") as pptx:
+        pptx.writestr("ppt/slides/slide1.xml", "<a:t>海沃</a:t>")
+
+    manifest = run(source, output, replacements=[("海沃", "恆璞")])
+    status = {record["path"]: record["status"] for record in manifest["records"]}
+    assert status == {"海沃QA.xlsx": "converted", "notes.txt": "passthrough",
+                      "intro.docx": "needs_review", "clean.pptx": "passthrough"}
+    documents = output / "documents"
+    html = (documents / "恆璞QA.xlsx.html").read_text()
+    assert "海沃" not in html and "恆璞的服務？" in html and "請洽恆璞窗口" in html
+    assert (documents / "notes.txt").read_text() == "恆璞簡介"
+    with zipfile.ZipFile(documents / "clean.pptx") as pptx:
+        assert pptx.read("ppt/slides/slide1.xml").decode() == "<a:t>恆璞</a:t>"
+    assert (source / "notes.txt").read_text() == "海沃簡介"
+    assert not run(source, output)["records"][0].get("reused")
